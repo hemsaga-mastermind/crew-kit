@@ -38,6 +38,6 @@ v0.1. Used daily to run Crewless. Expect changes; issues and pull requests are w
 
 ## Licence
 - Docs and templates: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-- Code: MIT (see LICENSE).
+- Code: MIT (see LICENSE); docs licence in LICENSE-docs.
 
 Made by Crewless.

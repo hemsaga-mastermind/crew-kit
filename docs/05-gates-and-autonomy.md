@@ -21,3 +21,17 @@ count. Killing a product is a normal outcome and is logged like any other decisi
 | C | Founder's signature only | Real money; spending and subscriptions; anything sent or signed as the founder; legal and identity; secrets and accounts; public launch of a new product; changes to the autonomy model itself |
 
 Level B is earned per system, not declared. Until the machinery exists, the action stays at level C.
+
+### Enforce levels in code (v0.2)
+A level is only real when the system holds it without anyone remembering to. For each level-C action, name the
+technical control that makes it impossible for an agent, and the test that proves the control exists:
+
+| Level-C action | Control | Proof |
+| --- | --- | --- |
+| Placing an order or payment | The agent's client can only read (GET-only transport, allowlisted methods) | A self-test that tries every write call and shows each refused |
+| Reaching money code at all | An import ban: only one named module may import the broker or payment library | A CI test that scans the package |
+| Restarting a stopped sensitive service | The service sits behind a deploy profile; a plain "up" cannot start it | A dry run of the deploy that lists nothing to start |
+| Editing history | Append-only, hash-chained journals; a broken chain fails the health check | A tamper test |
+| Widening a limit | The limits file refuses to load a looser version without a recorded founder decision | A test that loads a loosened file unsigned and fails |
+
+Agents may tighten on their own. Only the founder loosens, and the loosening is itself logged.

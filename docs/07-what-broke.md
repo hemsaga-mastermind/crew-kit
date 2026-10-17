@@ -17,5 +17,9 @@ other teams can use.
 | 10 | Login details and data exports landed in shared folders | Agents saved what they used | Rule 8 plus a scanner; secrets only in a secret store |
 | 11 | Plans multiplied | Every agent wrote its own plan | One plan; old ones marked "superseded" with a pointer |
 | 12 | Tools ran on accounts the company did not own | Quick start | Company-owned accounts from day one; accounts are level C |
+| 13 | A safety stop was undone by automation | A deploy script's "bring everything up" restarted services a person had stopped on purpose | A stop must survive every automated path: stopped services are declared off in the deploy config itself (a profile), not only stopped by hand |
+| 14 | A redeploy "succeeded" but the old version kept running | The container had resolved a path at creation; the deploy command saw nothing to change and said OK | Verify the running revision after every deploy, never the command's exit code; the runbook names the exact check |
+| 15 | A builder wrote code before its tests and said so afterwards | "Tests first" lived in a rule, not a check | The order is enforced: the tests commit must precede the code commit, checked in CI; the builder's report states the two hashes |
+| 16 | Old scheduled jobs kept running for nine days after the handover marked them for removal | Removal was a line in a document; nobody owned it | A handover that disables something ends with the disable command and its proof; the next session's first check lists every scheduled job and its owner |
 
 If you hit a failure that is not here, open an issue. Failures are the most valuable contribution.

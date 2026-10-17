@@ -27,6 +27,14 @@ only about 12% of the time (0.9^20 ≈ 0.12). Fewer steps, or a check between st
 7. **Cap the steps.** Break long tasks into short ones, each with its own acceptance test (doc 04), so an error is
    caught where it happens instead of twenty steps later.
 
+8. **Pre-register before you look (v0.2).** For any study whose result could change a decision, write the question,
+   the data, the exact variants and the pass line to a file and commit it *before* running anything. Judge on data
+   the rules never saw. Correct for the number of variants you tried. Never edit the registration afterwards; put
+   deviations in a separate section of the results. A negative result is a finding, filed with the same care.
+9. **Seal forecasts, then score them (v0.2).** Anything that claims to know the future is written to an append-only
+   journal with a hash and a timestamp before the outcome, and scored against naive baselines afterwards. Trust,
+   and any authority over money, grows only with the scored record.
+
 ## What this does not do
 These checks find the failures you thought to test for. They do not prove an agent is correct in general. Add every
 real failure you find to the known-answer set, so it cannot happen twice unnoticed.

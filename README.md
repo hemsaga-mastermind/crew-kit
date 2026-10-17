@@ -30,11 +30,11 @@ agent tool that can read and write files: Claude Code, Cursor, scheduled routine
 | [06 Cost hygiene](docs/06-cost-hygiene.md) | Keeping token and agent spend sane |
 | [07 What broke](docs/07-what-broke.md) | Real failures and the fix for each |
 | [08 Checking agent output](docs/08-checking-agent-output.md) | Catching confident, wrong answers |
-| `templates/` | Charter, state, backlog, handoff, status, decision log |
+| `templates/` | Charter, state, backlog, handoff, status, decision log, card (v0.2) |
 | `tools/check_decisions.py` | Validates the decision log (no dependencies) |
 
 ## Status
-v0.1. Used daily to run Crewless. Expect changes; issues and pull requests are welcome.
+v0.2 (draft). Used daily to run Crewless. v0.2 adds four failures (13-16), two rules (11-12), enforced autonomy levels, handoff files, untrusted cards, and pre-registration. Issues and pull requests are welcome.
 
 ## Licence
 - Docs and templates: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

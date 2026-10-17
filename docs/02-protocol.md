@@ -22,3 +22,11 @@
 9. **Blocked?** Make the safest reasonable decision inside your lane and tell the chief operator. Ask the founder
    only when rule 2 applies.
 10. **Records.** Log decisions in the decision log, keep your files in your own folder, keep the plan file current.
+
+Added in v0.2:
+
+11. **Tests before code.** A module starts with a one-page spec and its acceptance tests, committed before the
+    implementation. The builder's report names both commits. CI checks the order.
+12. **Enforce the levels in code.** Where an action is level C (doc 05), the system makes it technically impossible
+    for an agent, not only forbidden: read-only transports, import bans checked in CI, services that cannot be
+    started by a plain deploy, append-only journals. A rule an agent *could* break will be broken by accident.

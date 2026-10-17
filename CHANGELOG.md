@@ -1,7 +1,7 @@
 # Changelog
 
 ## v0.2 (draft, 17 Oct 2026)
-Learned from running a second product (a private trading allocator) on the method for one week.
+Learned from running a second internal product, one with strict controls on real-world actions, on the method for a week.
 - `07-what-broke`: rows 13-16 (automation undid a safety stop; a redeploy that kept the old version; code before tests; old jobs nobody switched off).
 - `02-protocol`: rule 11 tests before code; rule 12 enforce levels in code.
 - `05-gates-and-autonomy`: a table of technical controls and proofs for level-C actions.

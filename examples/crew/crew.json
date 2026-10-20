@@ -1,0 +1,63 @@
+{
+  "crew_kit": "0.3",
+  "crew": "example",
+  "journal": "records/decisions.jsonl",
+  "gates": "records/gates.jsonl",
+  "handoffs": "handoffs",
+  "agents": [
+    {
+      "id": "operator",
+      "folder": "agents/operator",
+      "lane": "chief operator: sweeps, handoffs, weekly health check",
+      "autonomy": "A",
+      "wakes": [
+        "cron: daily 07:00 reread-and-report",
+        "event: handoff addressed to operator"
+      ],
+      "controls": [],
+      "actions": [
+        {
+          "name": "weekly health check",
+          "irreversible": false,
+          "gate": "none"
+        },
+        {
+          "name": "send the founder an approval pack",
+          "irreversible": true,
+          "gate": "founder"
+        }
+      ]
+    },
+    {
+      "id": "builder",
+      "folder": "agents/builder",
+      "lane": "the single door to coding agents (rule 5)",
+      "autonomy": "A",
+      "wakes": [
+        "cron: weekdays 08:00",
+        "event: failing check on an open pull request"
+      ],
+      "controls": [
+        "branch_protection",
+        "ci_gates"
+      ],
+      "actions": [
+        {
+          "name": "open a draft pull request",
+          "irreversible": false,
+          "gate": "none"
+        },
+        {
+          "name": "merge to main",
+          "irreversible": true,
+          "gate": "founder"
+        },
+        {
+          "name": "deploy",
+          "irreversible": true,
+          "gate": "founder"
+        }
+      ]
+    }
+  ]
+}

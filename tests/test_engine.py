@@ -136,7 +136,7 @@ class TestHealth(Base):
 
     def test_no_status_this_week_fails(self):
         ws.healthy(self.root)
-        os.remove(self.root / "agents/operator/status/%s.md" % ASOF)
+        os.remove(self.root / ("agents/operator/status/%s.md" % ASOF))
         ws.write(self.root / "agents/operator/status/2026-09-30.md", ws.STATUS.format(date="2026-09-30"))
         _, res = self.health()
         self.assertEqual(checks(res, "operator")["status_sent"]["verdict"], "fail")
@@ -144,7 +144,7 @@ class TestHealth(Base):
     def test_status_missing_a_required_line_does_not_count(self):
         ws.healthy(self.root)
         ws.write(
-            self.root / "agents/operator/status/%s.md" % ASOF,
+            self.root / ("agents/operator/status/%s.md" % ASOF),
             "STATUS operator %s\nDone: x\nNext: y\nBlocked: none\nRisks: none\n" % ASOF,
         )
         _, res = self.health()

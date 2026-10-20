@@ -115,7 +115,72 @@ unparseable and does not count as a status sent.
 Header keys — required: `from`, `to`, `sent` (date), `ask`, `acceptance_test`.
 Optional: `answered` (date), `cc`, `founder_needed`.
 
-### 2.7 `gates.jsonl`
+### 2.7 `contract.md` — the mutual contract
+
+A role's obligations in both directions, and its exit. Required sections, each a level-2
+heading, in this order:
+
+```markdown
+# Contract: <role>
+
+## I deliver
+- <output>, judged by: <oracle - a test, not an opinion>
+
+## I am owed
+- <input>, from <role>, within <duration>
+
+## Done means
+- <the oracle passes>, named explicitly, runnable by someone else
+
+## If I cannot
+- <raise | block | hand back to <role>>, within <duration>, recording why
+
+## Breach
+- mine: <condition> -> demote
+- yours: <condition> -> the role goes amber and the owed party is named
+```
+
+Every bullet under `## I deliver` carries `judged by:` and a non-empty oracle. **A contract
+that names no oracle is invalid and its role may not act autonomously** — an agent may act
+alone exactly when something that did not produce the output can tell whether it is right.
+That rule is checkable, so the engine checks it (`L12`).
+
+### 2.8 `nodes.json` — capability profiles, when there is more than one machine
+
+Optional. With no `nodes.json` there is one node, everything runs there, and the engine
+says nothing about placement — nobody should need four computers to run a crew.
+
+```json
+{
+  "crew_kit": "0.3",
+  "nodes": [
+    {
+      "name": "vm-1",
+      "class": "authoritative",
+      "capabilities": {"always_on": true, "ram_mb": 2048, "python": ["3.12"], "os": "linux"},
+      "grants": {"may_send_mail": true, "may_schedule": true, "may_hold_secrets": true},
+      "products": ["example"],
+      "max_concurrent_roles": 3
+    }
+  ]
+}
+```
+
+Two kinds of claim, and the split is the point:
+
+- **capacity** (`always_on`, `public_ingress`, `ram_mb`, `cpu`, `gpu`, `can_serve_model`,
+  `python`, `os`, `egress`) may be self-reported;
+- **permission** (`may_hold_secrets`, `may_hold_personal_data`, `may_send_mail`,
+  `may_schedule`) is a grant from the founder and belongs in `grants`. A node cannot assert
+  its own right to hold secrets, so a permission under `capabilities` is a finding (`L14`)
+  and does not satisfy anything.
+
+An agent declares what it needs with `needs` in the manifest, naming capabilities, never a
+machine. A need nothing can satisfy is a finding (`L13`), not a thing to degrade until it
+fits the machine that happens to be up. A `nodes.json` the engine cannot trust is fatal,
+for the same reason a bad manifest is.
+
+### 2.9 `gates.jsonl`
 
 One JSON object per line, one per product and gate (doc 05).
 
@@ -126,7 +191,7 @@ One JSON object per line, one per product and gate (doc 05).
 Required: `product`, `gate` (`G0`–`G3`), `kill_line`, `kill_line_written`, `status`
 (`open`/`passed`/`killed`). Optional: `test_started`, `decided`.
 
-### 2.8 `decisions.jsonl`
+### 2.10 `decisions.jsonl`
 
 As v0.1 (`tools/check_decisions.py` defines the schema and stays the reference). v0.3 adds optional
 hash chaining: a record may carry `prev` (the previous record's `hash`, or `null` for the first) and
@@ -176,6 +241,11 @@ Structure only. It runs nothing and judges no content.
 | `L07` | autonomy `B` without all six doc 05 controls, named individually |
 | `L08` | an irreversible action whose gate is `none` |
 | `L09` | an agent with no `wakes` — doc 01's "idle with a full backlog" |
+| `L10` | no `contract.md` |
+| `L11` | a contract missing a required section |
+| `L12` | a deliverable with no oracle — the role may not act autonomously under it |
+| `L13` | a `needs` capability no node can satisfy |
+| `L14` | a permission capability declared as a self-reported capability |
 
 Every finding is a `fail` with a path. `lint` has no `unknown`: either the structure is there or it
 is not. Findings are sorted by agent id, then code.

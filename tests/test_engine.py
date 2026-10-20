@@ -394,6 +394,140 @@ class TestLint(Base):
         self.assertEqual(keys, sorted(keys))
 
 
+class TestContract(Base):
+    """The mutual contract: a contract naming no oracle is invalid."""
+
+    def codes(self, agent_id="operator"):
+        _, res = run(["lint", str(self.root)])
+        return sorted(f["code"] for f in res["findings"] if f["agent"] == agent_id)
+
+    def test_a_complete_contract_is_clean(self):
+        ws.healthy(self.root)
+        self.assertEqual(self.codes(), [])
+
+    def test_missing_contract_is_reported(self):
+        ws.healthy(self.root)
+        os.remove(self.root / "agents/operator/contract.md")
+        self.assertEqual(self.codes(), ["L10"])
+
+    def test_missing_section_names_the_section(self):
+        ws.healthy(self.root)
+        text = ws.CONTRACT.format(extra="")
+        text = text.split("## Breach")[0]
+        ws.write(self.root / "agents/operator/contract.md", text)
+        _, res = run(["lint", str(self.root)])
+        found = [f for f in res["findings"] if f["code"] == "L11"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("Breach", found[0]["detail"])
+
+    def test_a_deliverable_with_no_oracle_is_reported(self):
+        ws.healthy(self.root)
+        ws.write(
+            self.root / "agents/operator/contract.md",
+            ws.CONTRACT.format(extra="- a weekly summary for the founder\n"),
+        )
+        _, res = run(["lint", str(self.root)])
+        found = [f for f in res["findings"] if f["code"] == "L12"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("weekly summary", found[0]["detail"])
+        self.assertIn("may not act autonomously", found[0]["detail"])
+
+    def test_an_empty_oracle_is_no_oracle(self):
+        ws.healthy(self.root)
+        ws.write(
+            self.root / "agents/operator/contract.md",
+            "# Contract: operator\n\n## I deliver\n- a report, judged by:   \n\n"
+            "## I am owed\n- x\n\n## Done means\n- y\n\n## If I cannot\n- z\n\n## Breach\n- w\n",
+        )
+        self.assertIn("L12", self.codes())
+
+    def test_no_deliverable_at_all_is_reported(self):
+        ws.healthy(self.root)
+        ws.write(
+            self.root / "agents/operator/contract.md",
+            "# Contract: operator\n\n## I deliver\n\n## I am owed\n- x\n\n## Done means\n- y\n\n"
+            "## If I cannot\n- z\n\n## Breach\n- w\n",
+        )
+        self.assertIn("L12", self.codes())
+
+
+class TestPlacement(Base):
+    """Capability-based placement."""
+
+    def with_nodes(self, nodes=None, needs=None):
+        man = json.loads(json.dumps(ws.MANIFEST))
+        if needs is not None:
+            man["agents"][0]["needs"] = needs
+        ws.healthy(self.root)
+        ws.write(self.root / "crew.json", json.dumps(man))
+        if nodes is not None:
+            ws.write(self.root / "nodes.json", json.dumps(nodes))
+        return run(["lint", str(self.root)])
+
+    def test_one_node_default_needs_no_nodes_file(self):
+        code, res = self.with_nodes()
+        self.assertEqual(res["findings"], [])
+        self.assertEqual(code, 0)
+
+    def test_a_need_with_no_nodes_file_is_reported(self):
+        _, res = self.with_nodes(needs=["may_send_mail"])
+        self.assertEqual([f["code"] for f in res["findings"]], ["L13"])
+
+    def test_a_need_a_node_satisfies_is_clean(self):
+        _, res = self.with_nodes(nodes=ws.NODES, needs=["may_send_mail", "always_on"])
+        self.assertEqual(res["findings"], [])
+
+    def test_a_need_no_node_satisfies_names_the_capability(self):
+        _, res = self.with_nodes(nodes=ws.NODES, needs=["may_hold_personal_data"])
+        found = [f for f in res["findings"] if f["code"] == "L13"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("may_hold_personal_data", found[0]["detail"])
+
+    def test_a_permission_declared_as_a_capability_is_reported(self):
+        nodes = json.loads(json.dumps(ws.NODES))
+        nodes["nodes"][0]["capabilities"]["may_hold_personal_data"] = True
+        _, res = self.with_nodes(nodes=nodes, needs=["may_hold_personal_data"])
+        codes = [f["code"] for f in res["findings"]]
+        self.assertIn("L14", codes)
+        self.assertIn("L13", codes, "a self-declared permission must not satisfy a need")
+        found = [f for f in res["findings"] if f["code"] == "L14"][0]
+        self.assertIn("grants", found["detail"])
+
+    def test_a_false_grant_does_not_satisfy_a_need(self):
+        nodes = json.loads(json.dumps(ws.NODES))
+        nodes["nodes"][0]["grants"]["may_send_mail"] = False
+        _, res = self.with_nodes(nodes=nodes, needs=["may_send_mail"])
+        self.assertIn("L13", [f["code"] for f in res["findings"]])
+
+    def test_an_unknown_capability_in_needs_exits_two(self):
+        out = io.StringIO()
+        man = json.loads(json.dumps(ws.MANIFEST))
+        man["agents"][0]["needs"] = ["vibes"]
+        ws.healthy(self.root)
+        ws.write(self.root / "crew.json", json.dumps(man))
+        with redirect_stdout(out):
+            code = cli.main(["lint", str(self.root), "--json"])
+        self.assertEqual(code, 2)
+
+    def test_a_broken_nodes_file_exits_two(self):
+        ws.healthy(self.root)
+        ws.write(self.root / "nodes.json", "{not json")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = cli.main(["lint", str(self.root), "--json"])
+        self.assertEqual(code, 2, "placement the engine cannot trust is fatal, like the manifest")
+
+    def test_an_unknown_node_key_exits_two(self):
+        nodes = json.loads(json.dumps(ws.NODES))
+        nodes["nodes"][0]["mood"] = "fine"
+        out = io.StringIO()
+        ws.healthy(self.root)
+        ws.write(self.root / "nodes.json", json.dumps(nodes))
+        with redirect_stdout(out):
+            code = cli.main(["lint", str(self.root), "--json"])
+        self.assertEqual(code, 2)
+
+
 class TestGates(Base):
     LINE = {
         "product": "example",

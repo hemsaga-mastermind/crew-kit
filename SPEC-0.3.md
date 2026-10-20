@@ -55,7 +55,7 @@ One per workspace, at its root. The engine reads nothing it is not pointed at fr
 ```json
 {
   "crew_kit": "0.3",
-  "crew": "crewless",
+  "crew": "example",
   "journal": "records/decisions.jsonl",
   "gates": "records/gates.jsonl",
   "handoffs": "handoffs",

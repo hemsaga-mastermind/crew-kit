@@ -395,7 +395,12 @@ class TestLint(Base):
 
 
 class TestContract(Base):
-    """The mutual contract: a contract naming no oracle is invalid."""
+    """The mutual contract: a contract that names no oracle is invalid.
+
+    A role may act alone exactly when something that did not produce the output can tell
+    whether it is right, so a deliverable with no oracle is reported and the finding says
+    the role may not act autonomously under it.
+    """
 
     def codes(self, agent_id="operator"):
         _, res = run(["lint", str(self.root)])
@@ -452,7 +457,12 @@ class TestContract(Base):
 
 
 class TestPlacement(Base):
-    """Capability-based placement."""
+    """Capability-based placement.
+
+    Work declares what it needs, nodes declare what they have, and a program matches them:
+    no agent names a machine. A capability that is a permission counts only as a grant, so
+    a node cannot assert its own right to hold secrets or send mail.
+    """
 
     def with_nodes(self, nodes=None, needs=None):
         man = json.loads(json.dumps(ws.MANIFEST))

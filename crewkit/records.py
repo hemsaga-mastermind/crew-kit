@@ -20,15 +20,26 @@ ACTION_GATES = ("none", "automated", "founder")
 STATUS_COLOURS = ("green", "amber", "red")
 STATUS_LINES = ("Done:", "Next:", "Blocked:", "Risks:", "Decisions needed:")
 
-MANIFEST_KEYS = {"crew_kit", "crew", "journal", "gates", "handoffs", "agents"}
+CAPACITY_CAPS = ("always_on", "public_ingress", "ram_mb", "cpu", "gpu", "can_serve_model",
+                 "python", "os", "egress")
+PERMISSION_CAPS = ("may_hold_secrets", "may_hold_personal_data", "may_send_mail", "may_schedule")
+CAPABILITIES = CAPACITY_CAPS + PERMISSION_CAPS
+NODE_CLASSES = ("authoritative", "interactive", "worker")
+CONTRACT_SECTIONS = ("I deliver", "I am owed", "Done means", "If I cannot", "Breach")
+ORACLE_MARKER = "judged by:"
+
+MANIFEST_KEYS = {"crew_kit", "crew", "journal", "gates", "handoffs", "nodes", "agents"}
 MANIFEST_REQUIRED = ("crew_kit", "crew", "agents")
-AGENT_KEYS = {"id", "folder", "autonomy", "lane", "wakes", "controls", "actions"}
+AGENT_KEYS = {"id", "folder", "autonomy", "lane", "wakes", "controls", "actions", "needs"}
 AGENT_REQUIRED = ("id", "folder", "autonomy")
 ACTION_KEYS = {"name", "irreversible", "gate"}
 STATE_KEYS = {"agent", "status", "updated", "lane", "autonomy", "waiting_on"}
 STATE_REQUIRED = ("agent", "status", "updated")
 HANDOFF_KEYS = {"from", "to", "sent", "ask", "acceptance_test", "answered", "cc", "founder_needed"}
 HANDOFF_REQUIRED = ("from", "to", "sent", "ask", "acceptance_test")
+NODE_KEYS = {"name", "class", "capabilities", "grants", "products", "max_concurrent_roles",
+             "key_id"}
+NODE_REQUIRED = ("name", "class")
 GATE_KEYS = {"product", "gate", "kill_line", "kill_line_written", "test_started", "status", "decided"}
 GATE_REQUIRED = ("product", "gate", "kill_line", "kill_line_written", "status")
 
@@ -154,6 +165,93 @@ def parse_status(text):
     return errors
 
 
+def parse_contract(text):
+    """(deliverables, errors). A deliverable is (line, text, oracle)."""
+    sections, current = {}, None
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.startswith("## "):
+            current = line[3:].strip()
+            sections[current] = []
+        elif current is not None:
+            sections[current].append((n, line))
+    errors = [("missing required section %r" % name)
+              for name in CONTRACT_SECTIONS if name not in sections]
+    deliverables = []
+    for n, line in sections.get("I deliver", []):
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            continue
+        body = stripped[2:].strip()
+        oracle = None
+        if ORACLE_MARKER in body:
+            head, tail = body.split(ORACLE_MARKER, 1)
+            body = head.rstrip().rstrip(",")
+            oracle = tail.strip() or None
+        deliverables.append((n, body, oracle))
+    return deliverables, errors
+
+
+def load_nodes(path):
+    """Read nodes.json. Returns a list of nodes, or None when there is no file.
+
+    A nodes file the engine cannot trust is fatal, for the same reason a bad manifest is:
+    placement is a guardrail, and a guardrail read from a file we cannot parse is not one.
+    """
+    text, error = read_text(path)
+    if text is None:
+        if error == "not found":
+            return None
+        raise ManifestError("%s: %s" % (path, error))
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ManifestError("%s: invalid JSON (%s)" % (path, exc.msg))
+    if not isinstance(doc, dict):
+        raise ManifestError("%s: not an object" % path)
+    _reject_unknown(doc, {"crew_kit", "nodes"}, str(path))
+    from crewkit import VERSION
+    if doc.get("crew_kit") != VERSION:
+        raise ManifestError("%s: crew_kit is %r, this engine reads %r"
+                            % (path, doc.get("crew_kit"), VERSION))
+    if not isinstance(doc.get("nodes"), list) or not doc["nodes"]:
+        raise ManifestError("%s: 'nodes' must be a non-empty list" % path)
+    nodes, seen = [], set()
+    for raw in doc["nodes"]:
+        if not isinstance(raw, dict):
+            raise ManifestError("%s: a node is not an object" % path)
+        where = "%s: node %r" % (path, raw.get("name", "?"))
+        _reject_unknown(raw, NODE_KEYS, where)
+        for key in NODE_REQUIRED:
+            if key not in raw:
+                raise ManifestError("%s: missing required key %r" % (where, key))
+        if not isinstance(raw["name"], str) or not ID_RE.match(raw["name"]):
+            raise ManifestError("%s: name must be lowercase letters, digits and hyphens" % where)
+        if raw["name"] in seen:
+            raise ManifestError("%s: duplicate node name %r" % (path, raw["name"]))
+        seen.add(raw["name"])
+        if raw["class"] not in NODE_CLASSES:
+            raise ManifestError("%s: class %r is not one of %s"
+                                % (where, raw["class"], ", ".join(NODE_CLASSES)))
+        for key in ("capabilities", "grants"):
+            value = raw.get(key, {})
+            if not isinstance(value, dict):
+                raise ManifestError("%s: %s must be an object" % (where, key))
+            for name in value:
+                if name not in CAPABILITIES:
+                    raise ManifestError("%s: %s names %r, which is not a capability"
+                                        % (where, key, name))
+        nodes.append({
+            "name": raw["name"],
+            "class": raw["class"],
+            "capabilities": dict(raw.get("capabilities", {})),
+            "grants": dict(raw.get("grants", {})),
+            "products": list(raw.get("products", [])),
+            "max_concurrent_roles": raw.get("max_concurrent_roles"),
+            "path": path,
+        })
+    return nodes
+
+
 def read_jsonl(path):
     """Returns (records, errors). Each record gains '_line'."""
     text, error = read_text(path)
@@ -227,6 +325,10 @@ def load_manifest(root):
         wakes = raw.get("wakes", [])
         if not isinstance(wakes, list) or any(not isinstance(w, str) for w in wakes):
             raise ManifestError("%s: wakes must be a list of strings" % where)
+        needs = raw.get("needs", [])
+        if not isinstance(needs, list) or any(n not in CAPABILITIES for n in needs):
+            raise ManifestError("%s: needs must be capability names, one of %s"
+                                % (where, ", ".join(CAPABILITIES)))
         actions = raw.get("actions", [])
         if not isinstance(actions, list):
             raise ManifestError("%s: actions must be a list" % where)
@@ -250,6 +352,7 @@ def load_manifest(root):
             "autonomy": raw["autonomy"],
             "wakes": list(wakes),
             "controls": list(controls),
+            "needs": list(needs),
             "actions": list(actions),
         })
 
@@ -259,6 +362,7 @@ def load_manifest(root):
         "journal": _inside(root, man.get("journal", "decisions.jsonl"), "crew.json: journal"),
         "gates": _inside(root, man.get("gates", "gates.jsonl"), "crew.json: gates"),
         "handoffs": _inside(root, man.get("handoffs", "handoffs"), "crew.json: handoffs"),
+        "nodes": load_nodes(_inside(root, man.get("nodes", "nodes.json"), "crew.json: nodes")),
         "agents": sorted(agents, key=lambda a: a["id"]),
     }
 

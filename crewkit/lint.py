@@ -20,12 +20,55 @@ CODES = {
     "L07": "autonomy B without all six controls",
     "L08": "an irreversible action with no gate",
     "L09": "an agent with no wakes",
+    "L10": "no contract.md",
+    "L11": "a contract missing a required section",
+    "L12": "a deliverable with no oracle",
+    "L13": "a needs capability no node can satisfy",
+    "L14": "a permission capability declared as a self-reported capability",
 }
 
 
 def _finding(agent, code, detail, path):
     return {"agent": agent, "code": code, "finding": CODES[code], "detail": detail,
             "evidence": str(path)}
+
+
+def _placement(manifest, cov):
+    """Work declares requirements, nodes declare capabilities, and a program matches them.
+
+    With no nodes.json there is one node and everything runs there, so there is nothing to
+    check. A declared need with nothing to satisfy it is a finding, never a requirement to
+    be quietly degraded until it fits whichever machine happens to be up.
+    """
+    nodes = manifest["nodes"]
+    findings = []
+    if nodes is not None:
+        cov.read(nodes[0]["path"])
+        for node in nodes:
+            for name in sorted(node["capabilities"]):
+                if name in rec.PERMISSION_CAPS:
+                    findings.append(_finding(
+                        "", "L14", "node %r declares %r among its capabilities; a permission is "
+                        "a grant from the founder and belongs in 'grants', because a node cannot "
+                        "assert its own right to it" % (node["name"], name), node["path"]))
+    for agent in manifest["agents"]:
+        for need in agent["needs"]:
+            if nodes is None:
+                findings.append(_finding(
+                    agent["id"], "L13", "needs %r, but there is no nodes.json, so nothing "
+                    "declares that capability" % need, manifest["root"] / "crew.json"))
+                continue
+            if not any(_satisfies(node, need) for node in nodes):
+                findings.append(_finding(
+                    agent["id"], "L13", "needs %r and no node provides it" % need,
+                    nodes[0]["path"]))
+    return findings
+
+
+def _satisfies(node, need):
+    """A permission counts only as a grant; capacity may be self-reported."""
+    source = node["grants"] if need in rec.PERMISSION_CAPS else node["capabilities"]
+    return source.get(need) not in (None, False)
 
 
 def run(manifest, asof=None):
@@ -37,7 +80,8 @@ def run(manifest, asof=None):
     for agent in manifest["agents"]:
         aid = agent["id"]
         folder = Path(agent["folder"])
-        for name, code in (("state.md", "L01"), ("backlog.md", "L02"), ("charter.md", "L03")):
+        for name, code in (("state.md", "L01"), ("backlog.md", "L02"), ("charter.md", "L03"),
+                           ("contract.md", "L10")):
             path = folder / name
             if path.exists():
                 cov.read(path)
@@ -56,6 +100,24 @@ def run(manifest, asof=None):
                     findings.append(_finding(
                         aid, "L05", "line %d: item #%d has no %s"
                         % (item["line"], item["id"], " and no ".join(item["missing"])), backlog))
+
+        contract = folder / "contract.md"
+        text, error = rec.read_text(contract)
+        if text is not None:
+            deliverables, errors = rec.parse_contract(text)
+            for message in errors:
+                findings.append(_finding(aid, "L11", message, contract))
+            if not deliverables:
+                findings.append(_finding(
+                    aid, "L12", "the contract names no deliverable at all, so nothing can be "
+                    "judged and the role may not act autonomously under it", contract))
+            for line, body, oracle in deliverables:
+                if not oracle:
+                    findings.append(_finding(
+                        aid, "L12", "line %d: deliverable %r names no oracle after %r, so the "
+                        "role may not act autonomously under it (an agent may act alone exactly "
+                        "when something that did not produce the output can tell it was right)"
+                        % (line, body, rec.ORACLE_MARKER), contract))
 
         if agent["autonomy"] == "B":
             missing = [c for c in rec.CONTROLS if c not in agent["controls"]]
@@ -76,6 +138,8 @@ def run(manifest, asof=None):
             findings.append(_finding(
                 aid, "L09", "no wakes declared: nothing will start this agent, so it will sit "
                 "idle with a full backlog (doc 01)", manifest["root"] / "crew.json"))
+
+    findings += _placement(manifest, cov)
 
     handoffs, unparseable, error = read_handoffs(manifest["handoffs"], cov)
     for path, fields in handoffs:

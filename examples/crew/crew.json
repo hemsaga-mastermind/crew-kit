@@ -26,6 +26,10 @@
           "irreversible": true,
           "gate": "founder"
         }
+      ],
+      "needs": [
+        "may_schedule",
+        "always_on"
       ]
     },
     {
@@ -57,7 +61,11 @@
           "irreversible": true,
           "gate": "founder"
         }
+      ],
+      "needs": [
+        "always_on"
       ]
     }
-  ]
+  ],
+  "nodes": "nodes.json"
 }

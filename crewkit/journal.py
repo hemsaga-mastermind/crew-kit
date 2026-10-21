@@ -96,7 +96,12 @@ def record_hash(record):
 
 
 def check_chain(records):
-    """(verdict, detail). Unchained is unknown; half-chained or broken is a fail."""
+    """(verdict, detail). Unchained is unknown; half-chained or broken is a fail.
+
+    A pass means the chain is internally consistent. It does NOT mean the journal was not
+    tampered with: nothing anchors the head, so re-chaining a rewritten file passes. Say
+    what a guard cannot do rather than letting a verdict imply it.
+    """
     chained = [r for r in records if "hash" in r]
     if not records:
         return UNKNOWN, "journal is empty, so the chain is not chained"
@@ -115,10 +120,17 @@ def check_chain(records):
                           % (record["_line"], record.get("prev"), prev))
         if record["hash"] != expected:
             return FAIL, ("line %d: hash does not match the record's contents "
-                          "(stored %s, computed %s) - the record was edited after it was written"
+                          "(stored %s, computed %s) - edited without re-chaining"
                           % (record["_line"], record["hash"][:12], expected[:12]))
         prev = record["hash"]
-    return PASS, "%d record(s), chain intact" % len(records)
+    # "intact" over-claimed. The chain is self-anchored -- prev starts at null and every
+    # hash is computed over the record it sits on -- so rewriting every record and
+    # re-chaining from scratch produces a chain that verifies. Measured: every text
+    # replaced, kind escalated to founder and source fabricated still returns pass here
+    # and pass on schema. It is evidence against carelessness, not against intent, and
+    # tamper-evidence needs an anchor the author does not control.
+    return PASS, ("%d record(s), internally consistent - a re-chained rewrite passes too, "
+                  "so this is not tamper-evidence" % len(records))
 
 
 def run(manifest, asof=None):

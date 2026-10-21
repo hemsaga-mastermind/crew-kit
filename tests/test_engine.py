@@ -645,6 +645,44 @@ class TestVerify(Base):
         self.assertEqual(res["checks"]["chain"]["verdict"], "pass")
         self.assertEqual(code, 0)
 
+    def test_a_wholesale_rewrite_that_re_chains_passes_and_the_detail_says_so(self):
+        """The chain is self-anchored, so it cannot detect a deliberate rewrite.
+
+        Found in review of PR #2, measured rather than reasoned: every text replaced, kind
+        escalated to founder and source fabricated still returns pass on schema and pass on
+        chain. The algorithm is not wrong -- a chain with no external anchor detects
+        corruption and lazy edits, nothing more -- but "chain intact" read as "not tampered
+        with", and those diverge exactly when someone rewrites and re-chains. Which is what
+        was done to this repository's own history the same afternoon.
+
+        So this test locks the honest wording in place rather than the implementation: a
+        claim that lives only in prose is a claim nobody checks.
+        """
+        forged = [dict(self.REC, text="Rewritten: the opposite of what was decided.",
+                       kind="founder", source={"type": "commit_signed"}),
+                  dict(self.REC, id="D-2026-10-19-01", date="2026-10-19",
+                       text="Also rewritten.", kind="founder",
+                       source={"type": "commit_signed"})]
+        code, res = self.journal(self.chain(forged))
+        self.assertEqual(res["checks"]["schema"]["verdict"], "pass")
+        self.assertEqual(res["checks"]["chain"]["verdict"], "pass")
+        self.assertEqual(code, 0)
+        detail = res["checks"]["chain"]["detail"]
+        self.assertNotIn("intact", detail)
+        self.assertIn("not tamper-evidence", detail)
+
+    def test_the_pre_registration_pass_does_not_claim_to_have_proved_the_order(self):
+        """Both dates are self-reported in a file with no hash and no chain."""
+        ws.healthy(self.root)
+        ws.write(self.root / "records/gates.jsonl", json.dumps({
+            "product": "example", "gate": "G1", "kill_line": "nobody uses it",
+            "kill_line_written": "2026-01-05", "test_started": "2026-01-12",
+            "status": "open"}) + "\n")
+        code, res = run(["gates", str(self.root)])
+        row = res["gates"][0]["checks"]["pre_registered"]
+        self.assertEqual(row["verdict"], "pass")
+        self.assertIn("self-reported", row["detail"])
+
     def test_an_edited_record_breaks_the_chain_and_names_the_line(self):
         second = dict(self.REC, id="D-2026-10-19-01", date="2026-10-19", text="Second decision.")
         text = self.chain([self.REC, second]).splitlines()

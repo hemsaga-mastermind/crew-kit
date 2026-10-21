@@ -23,7 +23,10 @@ someone *disagreed* stay in the documents, where they belong. The engine has thr
 3. Copy `templates/` into a folder per agent: `charter.md`, `state.md`, `backlog.md`.
 4. Start a decision log (`templates/decisions.jsonl`) and check it with `python3 -I tools/check_decisions.py`.
 5. Read [docs/07-what-broke.md](docs/07-what-broke.md) before you scale past three agents.
-6. Read [SPEC-0.3.md](SPEC-0.3.md), copy `examples/crew/crew.json`, and run the engine:
+6. Read [SPEC-0.3.md](SPEC-0.3.md), copy `examples/crew/crew.json`, and run the engine.
+   **The example crew is deliberately amber and red**, so `health` exits 1 and prints
+   failing rows on your first run — a green example would teach you that green is the
+   normal state, which is the thing this kit exists to argue with:
 
 ```
 python3 -I bin/crewkit health examples/crew --asof 2026-10-21

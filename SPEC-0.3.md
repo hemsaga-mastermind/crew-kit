@@ -276,6 +276,21 @@ If no record carries `hash`, the chain check is `unknown` ("journal is not chain
 An unchained journal is append-only by convention only, and the engine says so. If any record
 carries `hash`, every record must, and a break is a `fail` naming the first broken line.
 
+**What the chain cannot do, stated here because a `pass` invites the stronger reading.** The
+chain is self-anchored: `prev` begins at `null` and each hash covers only the record it sits on,
+so rewriting every record and re-chaining from scratch produces a chain that verifies. Measured,
+not reasoned: replacing every decision's text, escalating `kind` to `founder` and fabricating a
+`commit_signed` source returns `pass` on both schema and chain. So a `pass` means **internally
+consistent**, and the `fail` means **edited without re-chaining** — which is why those are the
+words the engine prints.
+
+The chain is therefore evidence against carelessness and accident, not against intent. Making it
+tamper-evident needs an anchor the author does not control: a signature over the head record, or
+the head published somewhere the author cannot rewrite. Until a kit version provides one, do not
+read a chained journal as proof that the records are what was decided — and note that **chaining
+an existing unchained journal produces a chain that verifies and proves nothing about the records
+it covers.**
+
 ## 4. What v0.3 deliberately does not do
 
 - It does not write, fix or scaffold anything.

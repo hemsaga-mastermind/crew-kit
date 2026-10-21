@@ -53,7 +53,14 @@ def run(manifest, asof=None):
                             "no test_started, so the test has not begun and pre-registration "
                             "cannot be checked yet", path)
             elif row["kill_line_written"] <= started:
-                pre = check("pre_registered", PASS, "kill line written %s, test started %s"
+                # Both dates are self-reported fields in a file the author writes, with no
+                # hash and no chain, so writing them in one sitting passes. Doc 05 calls
+                # pre-registration the easiest rule to fudge and this check is fudgeable by
+                # typing; v0.4 should derive the date from the commit that added the row,
+                # which the author does not control. Until then the detail says so.
+                pre = check("pre_registered", PASS,
+                            "kill line written %s, test started %s - both self-reported in "
+                            "this file, so this is the order claimed, not the order proved"
                             % (row["kill_line_written"], started), path)
             else:
                 pre = check("pre_registered", FAIL,

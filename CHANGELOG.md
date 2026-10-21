@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3 (draft, 21 Oct 2026)
+## v0.3 (21 Oct 2026)
 The rulebook grows a backbone: a record layer the crew's files actually conform to, and an engine that reads them.
 - `SPEC-0.3.md`: the record layer (manifest, header block, backlog, status, handoff, contract, nodes, gates,
   journal) and four commands. Three verdicts only; `unknown` is never folded into `pass` or `fail`.

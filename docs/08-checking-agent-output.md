@@ -35,6 +35,16 @@ only about 12% of the time (0.9^20 ≈ 0.12). Fewer steps, or a check between st
    journal with a hash and a timestamp before the outcome, and scored against naive baselines afterwards. Trust,
    and any authority over money, grows only with the scored record.
 
+10. **A hash chain you anchor yourself is not tamper-evidence (v0.3).** `crewkit verify` reports a chain as
+    *internally consistent*, never as *intact*, because the chain is self-anchored: rewrite every record, re-chain
+    from scratch, and it verifies. Measured, not assumed. It catches corruption and an edit somebody forgot to
+    re-chain — which is most real failures — and it catches nothing done on purpose. If a record needs to be
+    evidence against intent, anchor it outside the author's reach: sign the head, or publish the head where you
+    cannot rewrite it. The same applies to the two dates `gates` compares: both are self-reported in a file the
+    author writes, so a `pass` there is the order *claimed*, not the order *proved*. The fix is to take the date
+    from the commit that introduced the row rather than from a field — a date the author does not control, in a
+    record that already exists.
+
 ## What this does not do
 These checks find the failures you thought to test for. They do not prove an agent is correct in general. Add every
 real failure you find to the known-answer set, so it cannot happen twice unnoticed.

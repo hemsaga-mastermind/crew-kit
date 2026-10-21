@@ -1,0 +1,31 @@
+{
+  "crew_kit": "0.3",
+  "nodes": [
+    {
+      "name": "<node>",
+      "class": "authoritative",
+      "key_id": "<node>-<yyyy-mm>",
+      "capabilities": {
+        "always_on": true,
+        "public_ingress": false,
+        "ram_mb": 2048,
+        "cpu": 1,
+        "gpu": false,
+        "can_serve_model": false,
+        "python": [
+          "3.12"
+        ],
+        "os": "linux",
+        "egress": "unrestricted"
+      },
+      "grants": {
+        "may_hold_secrets": false,
+        "may_hold_personal_data": false,
+        "may_send_mail": false,
+        "may_schedule": false
+      },
+      "products": [],
+      "max_concurrent_roles": 1
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "crew_kit": "0.3",
+  "nodes": [
+    {
+      "name": "vm-1",
+      "class": "authoritative",
+      "key_id": "vm-1-2026-10",
+      "capabilities": {
+        "always_on": true,
+        "public_ingress": true,
+        "ram_mb": 2048,
+        "cpu": 1,
+        "gpu": false,
+        "can_serve_model": false,
+        "python": [
+          "3.12"
+        ],
+        "os": "linux",
+        "egress": "unrestricted"
+      },
+      "grants": {
+        "may_hold_secrets": true,
+        "may_hold_personal_data": true,
+        "may_send_mail": true,
+        "may_schedule": true
+      },
+      "products": [
+        "example"
+      ],
+      "max_concurrent_roles": 3
+    },
+    {
+      "name": "mac-1",
+      "class": "interactive",
+      "capabilities": {
+        "always_on": false,
+        "public_ingress": false,
+        "ram_mb": 16384,
+        "cpu": 8,
+        "gpu": true,
+        "can_serve_model": true,
+        "python": [
+          "3.9",
+          "3.13"
+        ],
+        "os": "darwin",
+        "egress": "unrestricted"
+      },
+      "grants": {},
+      "products": [
+        "example"
+      ],
+      "max_concurrent_roles": 1
+    }
+  ]
+}

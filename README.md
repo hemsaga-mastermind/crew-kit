@@ -1,3 +1,5 @@
+<img src="docs/assets/crewless-logo.svg" width="48" height="48" alt="Crewless">
+
 # Crew Kit
 
 **Run a small organisation on AI agents, with a person signing off what matters, and receipts for everything.**
